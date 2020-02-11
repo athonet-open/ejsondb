@@ -22,7 +22,7 @@ Json = #{
 
 Schema = ejsondb:new(<<"id">>, Tabs).
 
-%% SET
+%% GET
 ejsondb:get(a, [0], Json, Schema).
 %> #{<<"id">> => 0,<<"value">> => xxx}
 ejsondb:get(a, [1], Json, Schema).
@@ -54,7 +54,6 @@ ejsondb:get(b, [2, 10], Json3, Schema).
 
 %% SET_ALL/GET_ALL
 Json4 = ejsondb:set_all(b, [2], [], Json3, Schema).
-%> #{<<"a">> => []}
 ejsondb:get_all(b, [2], Json4, Schema).
 %> []
 ```
