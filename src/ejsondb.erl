@@ -7,7 +7,8 @@
 -include("ejsondb.hrl").
 
 -export([
-  new/2, 
+  new/2,
+  new/4,
 
   get/4, 
   set/5, 
@@ -20,9 +21,12 @@
 ]).
 
 new(IdKey, QueryTab) ->
-  #ejsondb_schema{qtab = QueryTab, id_key = IdKey}.
-  
-get(Qid, Ids, JsonStore, #ejsondb_schema{id_key = IdKey} = Schema) ->
+  new(IdKey, QueryTab, #{}, []).
+
+new(IdKey, QueryTab, Funs, Opts) ->
+  #ejsondb_schema{qtab = QueryTab, id_key = IdKey, funs = Funs, opts = Opts}.
+
+get(Qid, Ids, JsonStore, #ejsondb_schema{id_key = IdKey, funs = Funs, opts = Opts} = Schema) ->
   case qfind_i(Qid, Schema) of
     {error, Err} -> 
       {error, Err};
@@ -30,7 +34,7 @@ get(Qid, Ids, JsonStore, #ejsondb_schema{id_key = IdKey} = Schema) ->
       PathIds = lists:droplast(Ids),
       Id = lists:last(Ids),
       FormattedQuery = qfmt_i(Query, PathIds),
-      case ejsondb_crud:get_by(FormattedQuery, IdKey, Id, JsonStore) of
+      case ejsondb_crud:get_by(FormattedQuery, IdKey, Id, JsonStore, Funs, Opts) of
         {error, Err} -> {error, Err};
         {[], []} -> {error, not_found};
         {[Result], _Path} -> Result
@@ -46,7 +50,7 @@ add(Qid, Ids, Value, JsonStore, Schema = #ejsondb_schema{}) ->
 add_at(Qid, Ids, Value, JsonStore, At, Schema = #ejsondb_schema{}) ->
   modify_i(create, Qid, Ids, Value, JsonStore, At, Schema).
 
-delete(Qid, Ids, JsonStore, #ejsondb_schema{id_key = IdKey} = Schema) ->
+delete(Qid, Ids, JsonStore, #ejsondb_schema{id_key = IdKey, funs = Funs, opts = Opts} = Schema) ->
   case qfind_i(Qid, Schema) of
     {error, Err} -> 
       {error, Err};
@@ -54,7 +58,7 @@ delete(Qid, Ids, JsonStore, #ejsondb_schema{id_key = IdKey} = Schema) ->
       PathIds = lists:droplast(Ids),
       Id = lists:last(Ids),
       FormattedQuery = qfmt_i(Query, PathIds),
-      case ejsondb_crud:delete(FormattedQuery, IdKey, Id, JsonStore) of
+      case ejsondb_crud:delete(FormattedQuery, IdKey, Id, JsonStore, Funs, Opts) of
         {error, Err} -> {error, Err};
         NewJsonStore -> NewJsonStore
       end;
@@ -62,13 +66,13 @@ delete(Qid, Ids, JsonStore, #ejsondb_schema{id_key = IdKey} = Schema) ->
       {error, badarity}
   end.
   
-get_all(Qid, Ids, JsonStore, Schema = #ejsondb_schema{}) ->
+get_all(Qid, Ids, JsonStore, Schema = #ejsondb_schema{funs = Funs, opts = Opts}) ->
   case qfind_i(Qid, Schema) of
     {error, Err} ->
       {error, Err};
     {Query, Arity} when Arity =:= length(Ids) -> 
       FormattedQuery = qfmt_i(Query, Ids),
-      case ejsondb_crud:get(FormattedQuery, JsonStore) of
+      case ejsondb_crud:get(FormattedQuery, JsonStore, Funs, Opts) of
         {error, Err} -> {error, Err};
         {[], []} -> {error, not_found};
         {[Result], _Paths} -> Result
@@ -76,7 +80,7 @@ get_all(Qid, Ids, JsonStore, Schema = #ejsondb_schema{}) ->
     _ -> {error, badarity}
   end.
 
-set_all(Qid, Ids, Value, JsonStore, Schema = #ejsondb_schema{}) ->
+set_all(Qid, Ids, Value, JsonStore, Schema = #ejsondb_schema{funs = Funs, opts = Opts}) ->
   case qfind_i(Qid, Schema) of
     {error, Err} ->
       {error, Err};
@@ -86,7 +90,7 @@ set_all(Qid, Ids, Value, JsonStore, Schema = #ejsondb_schema{}) ->
       fun ({match, _}) -> {ok, Value};
           ({not_found, _, _, _}) -> erlang:error(not_found)
       end,
-      case ejsondb_crud:set(FormattedQuery, JsonStore, SetAllFunc) of
+      case ejsondb_crud:set(FormattedQuery, JsonStore, SetAllFunc, Funs, Opts) of
         {error, Err} -> {error, Err};
         {NewJsonStore, _Paths} -> NewJsonStore
       end;
@@ -95,7 +99,7 @@ set_all(Qid, Ids, Value, JsonStore, Schema = #ejsondb_schema{}) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-modify_i(Op, Qid, Ids, Value, JsonStore, At, #ejsondb_schema{id_key = IdKey} = Schema) 
+modify_i(Op, Qid, Ids, Value, JsonStore, At, #ejsondb_schema{id_key = IdKey, funs = Funs, opts = Opts} = Schema)
   when Op == put orelse Op == create ->
   case qfind_i(Qid, Schema) of
     {error, Err} ->
@@ -104,7 +108,7 @@ modify_i(Op, Qid, Ids, Value, JsonStore, At, #ejsondb_schema{id_key = IdKey} = S
       PathIds = lists:droplast(Ids),
       Id = lists:last(Ids),
       FormattedQuery = qfmt_i(Query, PathIds),
-      case ejsondb_crud:Op(FormattedQuery, IdKey, Id, Value, JsonStore, At) of
+      case ejsondb_crud:Op(FormattedQuery, IdKey, Id, Value, JsonStore, At, Funs, Opts) of
         {error, Err} -> {error, Err};
         NewJsonStore -> NewJsonStore
       end;

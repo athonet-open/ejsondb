@@ -407,6 +407,82 @@ invalid_query_test() ->
     ?assertEqual(error, element(1, ejsondb:get_all(a, [], storage(), Schema))),
     ok.
 
+keyacces_atom_test() ->
+    Tabs = [
+        {a, "$.a", 0},
+        {b, "$.a[?(@.id == ~p)].b", 1}
+    ],
+
+    Json = #{
+        a => [
+            #{id => 0, value => xxx},
+            #{id => 1, value => yyy},
+            #{id => 2, b => [
+                #{id => 0, count => 10},
+                #{id => 1, count => 12}
+            ]}
+        ]
+    },
+
+    Schema = ejsondb:new(id, Tabs, #{}, [{keyaccess, fun (X) -> erlang:binary_to_atom(X, utf8) end}]),
+
+    %% GET
+    ?assertEqual(
+        #{id => 0, value => xxx},
+        ejsondb:get(a, [0], Json, Schema)
+    ),
+    ?assertEqual(
+        #{id => 1,value => yyy},
+        ejsondb:get(a, [1], Json, Schema)
+    ),
+    ?assertEqual(
+        #{count => 10, id => 0},
+        ejsondb:get(b, [2,0], Json, Schema)
+    ),
+    ?assertEqual(
+        #{count => 12, id => 1},
+        ejsondb:get(b, [2,1], Json, Schema)
+    ),
+    ?assertEqual(
+        {error, not_found},
+        ejsondb:get(b, [2,2], Json, Schema)
+    ),
+
+    %% ADD
+    ?assertEqual(
+        {error, already_exist},
+        ejsondb:add(b, [2,1], #{}, Json, Schema)
+    ),
+
+    Json1 = ejsondb:add(b, [2,2], #{n => 100}, Json, Schema),
+    ?assertEqual(
+        #{id => 2, n => 100},
+        ejsondb:get(b, [2,2], Json1, Schema)
+    ),
+
+    %% SET
+    Json2 = ejsondb:set(b, [2,10], #{n => 1000}, Json1, Schema),
+    ?assertEqual(
+        #{id => 10, n => 1000},
+        ejsondb:get(b, [2,10], Json2, Schema)
+    ),
+
+    %% DELETE
+    Json3 = ejsondb:delete(b, [2, 10], Json2, Schema),
+    ?assertEqual(
+        {error, not_found},
+        ejsondb:get(b, [2, 10], Json3, Schema)
+    ),
+    %% SET_ALL/GET_ALL
+    Json4 = ejsondb:set_all(b, [2], [], Json3, Schema),
+    ?assertEqual([], ejsondb:get_all(b, [2], Json4, Schema)),
+
+    Json5 = ejsondb:set_all(a, [], [], Json3, Schema),
+    ?assertEqual(#{a => []}, Json5),
+    ?assertEqual([], ejsondb:get_all(a, [], Json5, Schema)),
+
+    ok.
+
 qtab() ->
     [
         {a, "$.a", 0},

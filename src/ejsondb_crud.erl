@@ -5,73 +5,67 @@
 -endif.
 
 -export([
-  get/2, set/3, 
-  get_by/4,
+  get/4,
+  set/5,
+  get_by/6,
 
-  create/5, create/6,
-  put/5, put/6,
-  upsert/5, upsert/6,
-  delete/4, delete/2
+  create/8,
+  put/8,
+  upsert/8,
+  delete/6, delete/4
 ]).
 
-get(Query, Json) ->
-  try ejsonpath:q(Query, Json, #{}, [])
+get(Query, Json, Funs, Opts) ->
+  try ejsonpath:q(Query, Json, Funs, Opts)
   catch _:Err:_ -> {error, Err}
   end.
 
-set(Query, Json, Func) ->
-  try ejsonpath:tr(Query, Json, Func, #{}, [handle_not_found])
+set(Query, Json, Func, Funs, Opts) ->
+  try ejsonpath:tr(Query, Json, Func, Funs, [handle_not_found|Opts])
   catch _:Err:_ -> {error, Err}
   end.
 
-get_by(Query, Key, Id, Json) ->
-  get(query_append_i(Query, Key, Id), Json).
+get_by(Query, Key, Id, Json, Funs, Opts) ->
+  get(query_append_i(Query, Key, Id), Json, Funs, Opts).
 
-create(Query, Key, Id, Value, Json) ->
-  create(Query, Key, Id, Value, Json, '$tail').
-
-create(Query, Key, Id, Value, Json, At) ->
+create(Query, Key, Id, Value, Json, At, Funs, Opts) ->
   try 
-    case get_list_i(Query, Json) of
+    case get_list_i(Query, Json, Funs, Opts) of
       L when is_list(L) ->
         L1 = create_i(L, Key, Id, Value, At),
-        update_list_i(Query, Json, L1);
+        update_list_i(Query, Json, L1, Funs, Opts);
       _ -> {error, not_found}
     end
   catch _:Err:_ -> {error, Err}
   end.
 
-put(Query, Key, Id, Value, Json) ->
-  put(Query, Key, Id, Value, Json, '$tail').
-put(Query, Key, Id, Value, Json, At) ->
+put(Query, Key, Id, Value, Json, At, Funs, Opts) ->
   try
-    case get_list_i(Query, Json) of
+    case get_list_i(Query, Json, Funs, Opts) of
       L when is_list(L) ->
         L1 = put_i(L, Key, Id, Value, At),
-        update_list_i(Query, Json, L1);
+        update_list_i(Query, Json, L1, Funs, Opts);
       _ -> {error, not_found}
     end
   catch _:Err:_ -> {error, Err}
   end.
 
-upsert(Query, Key, Id, Value, Json) ->
-  upsert(Query, Key, Id, Value, Json, '$tail').
-upsert(Query, Key, Id, Value, Json, At) ->
+upsert(Query, Key, Id, Value, Json, At, Funs, Opts) ->
   try
-    case get_list_i(Query, Json) of
+    case get_list_i(Query, Json, Funs, Opts) of
       L when is_list(L) ->
         L1 = upsert_i(L, Key, Id, Value, At),
-        update_list_i(Query, Json, L1);
+        update_list_i(Query, Json, L1, Funs, Opts);
       _ -> {error, not_found}
     end
   catch _:Err:_ -> {error, Err}
   end.
 
-delete(Query, Key, Id, Json) ->
-  delete(query_append_i(Query, Key, Id), Json).
-delete(Query, Json) ->
+delete(Query, Key, Id, Json, Funs, Opts) ->
+  delete(query_append_i(Query, Key, Id), Json, Funs, Opts).
+delete(Query, Json, Funs, Opts) ->
   try
-    {Json1, _} = ejsonpath:tr(Query, Json, fun(_) -> delete end, #{}, [handle_not_found]),
+    {Json1, _} = ejsonpath:tr(Query, Json, fun(_) -> delete end, Funs, [handle_not_found|Opts]),
     Json1
   catch
     _:not_found:_ -> Json;
@@ -80,15 +74,15 @@ delete(Query, Json) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-get_list_i(Query, Json) ->
-  case ejsonpath:q(Query, Json, #{}, []) of
+get_list_i(Query, Json, Funs, Opts) ->
+  case ejsonpath:q(Query, Json, Funs, Opts) of
     {[L], [_]} -> L;
     _ -> erlang:error(not_found)
   end.
 
-update_list_i(Query, Json, L) ->
+update_list_i(Query, Json, L, Funs, Opts) ->
   try
-    case ejsonpath:tr(Query, Json, fun(_) -> {ok, L} end, #{}, []) of
+    case ejsonpath:tr(Query, Json, fun(_) -> {ok, L} end, Funs, Opts) of
       {NewJson, [_]} -> NewJson
     end
     catch _:_:_ -> erlang:error(not_found)
@@ -165,10 +159,11 @@ insert_list_i(_, _, _) ->
   erlang:error(badarg).
 
 query_append_i(Query, Key, Id) 
-  when is_binary(Key) andalso (is_list(Id) orelse is_binary(Id) orelse is_atom(Id))->
+  when (is_binary(Key) orelse is_atom(Key))
+  andalso (is_list(Id) orelse is_binary(Id) orelse is_atom(Id))->
   lists:flatten(io_lib:format("~s[?(@.~s == '~s')]", [Query, Key, Id]));
 query_append_i(Query, Key, Id) 
-  when is_binary(Key) andalso is_number(Id) ->
+  when (is_binary(Key) orelse is_atom(Key)) andalso is_number(Id) ->
   lists:flatten(io_lib:format("~s[?(@.~s == ~p)]", [Query, Key, Id]));
 query_append_i(_, _, _) ->
    erlang:error(badarg).
