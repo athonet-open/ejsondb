@@ -1,0 +1,4 @@
+[{<<"ejsonpath">>,
+  {git,"https://github.com/athonet-open/ejsonpath.git",
+       {ref,"b9ef15d6d85966f27685e78c97ea5008f6f61bb9"}},
+  0}].
