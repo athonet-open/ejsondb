@@ -3,8 +3,8 @@
 
 -record(ejsondb_schema, {
   qtab = [] :: list(),
-  id_key :: binary(),
+  id_key :: binary() | atom(),
   funs :: #{},
-  opts :: []}).
+  opts :: list()}).
 
 -endif.
