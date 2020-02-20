@@ -10,9 +10,9 @@ new_test() ->
 
 get_test() ->
     Schema = ejsondb:new(<<"id">>, qtab()),
-    ?assertEqual({error, badkey}, ejsondb:get(d, [], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:get(d, [0], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:get(d, [0,1], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:get(d, [], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:get(d, [0], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:get(d, [0,1], storage(), Schema)),
     
     % level.1
     ?assertEqual({error, badarity}, ejsondb:get(a, [], storage(), Schema)),
@@ -20,7 +20,7 @@ get_test() ->
     ?assertEqual({error, not_found}, ejsondb:get(a, [0], #{}, Schema)),
     ?assertEqual({error, not_found}, ejsondb:get(a, [2], storage(), Schema)),
     
-    ?assertEqual(#{<<"id">> => 0, <<"value">> => xxx}, ejsondb:get(a, [0], storage(), Schema)),
+    ?assertEqual({ok, #{<<"id">> => 0, <<"value">> => xxx}}, ejsondb:get(a, [0], storage(), Schema)),
 
     % level.2
     ?assertEqual({error, badarity}, ejsondb:get(b, [], storage(), Schema)),
@@ -30,7 +30,7 @@ get_test() ->
     ?assertEqual({error, not_found}, ejsondb:get(b, [0, 0], storage(), Schema)),
     ?assertEqual({error, not_found}, ejsondb:get(b, [1, 2], storage(), Schema)),
 
-    ?assertEqual(#{<<"id">> => 0, <<"value">> => yyy}, ejsondb:get(b, [1, 0], storage(), Schema)),
+    ?assertEqual({ok, #{<<"id">> => 0, <<"value">> => yyy}}, ejsondb:get(b, [1, 0], storage(), Schema)),
     
     % level.3
     ?assertEqual({error, badarity}, ejsondb:get(c, [], storage(), Schema)),
@@ -39,26 +39,26 @@ get_test() ->
 
     ?assertEqual({error, not_found}, ejsondb:get(c, [1, 1, 2], storage(), Schema)),
 
-    ?assertEqual(#{<<"id">> => 0, <<"value">> => zzz}, ejsondb:get(c, [1, 1, 0], storage(), Schema)),
+    ?assertEqual({ok, #{<<"id">> => 0, <<"value">> => zzz}}, ejsondb:get(c, [1, 1, 0], storage(), Schema)),
     ok.
 
 set_test() -> 
     Schema = ejsondb:new(<<"id">>, qtab()),
-    ?assertEqual({error, badkey}, ejsondb:set(d, [], #{}, storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:set(d, [0], #{}, storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:set(d, [0,1], #{}, storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:set(d, [], #{}, storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:set(d, [0], #{}, storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:set(d, [0,1], #{}, storage(), Schema)),
 
     % level.1
     ?assertEqual({error, badarity}, ejsondb:set(a, [], #{}, storage(), Schema)),
     ?assertEqual({error, badarity}, ejsondb:set(a, [0,1], #{}, storage(), Schema)),
 
     % override
-    ?assertEqual(#{<<"a">> => [ 
+    ?assertEqual({ok, #{<<"a">> => [
                 #{<<"id">> => 0,<<"value">> => xxx},
-                #{<<"id">> => 1,<<"new_value">> => abc}]}, ejsondb:set(a, [1], #{<<"new_value">> => abc}, storage(), Schema)),
+                #{<<"id">> => 1,<<"new_value">> => abc}]}}, ejsondb:set(a, [1], #{<<"new_value">> => abc}, storage(), Schema)),
 
     % put new element
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -70,7 +70,7 @@ set_test() ->
             ]},
             #{ <<"id">> => 10, <<"new_value">> => abc}
         ]
-    }, ejsondb:set(a, [10], #{<<"new_value">> => abc}, storage(), Schema)),
+    }}, ejsondb:set(a, [10], #{<<"new_value">> => abc}, storage(), Schema)),
     
     % level.2
     ?assertEqual({error, badarity}, ejsondb:set(b, [], #{}, storage(), Schema)),
@@ -78,7 +78,7 @@ set_test() ->
     ?assertEqual({error, not_found}, ejsondb:set(b, [0, 0], #{}, storage(), Schema)),
 
     % override
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -86,9 +86,9 @@ set_test() ->
                 #{<<"id">> => 1, <<"new_value">> => abc}
             ]}
         ]
-    }, ejsondb:set(b, [1, 1], #{<<"new_value">> => abc}, storage(), Schema)),
+    }}, ejsondb:set(b, [1, 1], #{<<"new_value">> => abc}, storage(), Schema)),
     % override at current index
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -99,10 +99,10 @@ set_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:set(b, [1, 0], #{<<"new_value">> => abc}, storage(), Schema)),
+    }}, ejsondb:set(b, [1, 0], #{<<"new_value">> => abc}, storage(), Schema)),
 
     % put new element
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -114,7 +114,7 @@ set_test() ->
                 #{<<"id">> => 10, <<"new_value">> => abc}
             ]}
         ]
-    }, ejsondb:set(b, [1, 10], #{<<"new_value">> => abc}, storage(), Schema)),
+    }}, ejsondb:set(b, [1, 10], #{<<"new_value">> => abc}, storage(), Schema)),
 
     % level.3
     ?assertEqual({error, badarity}, ejsondb:set(c, [], #{}, storage(), Schema)),
@@ -122,7 +122,7 @@ set_test() ->
     ?assertEqual({error, not_found}, ejsondb:set(c, [1, 0, 0], #{}, storage(), Schema)),
 
     % override
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -133,9 +133,9 @@ set_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:set(c, [1, 1, 0], #{<<"new_value">> => xxx}, storage(), Schema)),
+    }}, ejsondb:set(c, [1, 1, 0], #{<<"new_value">> => xxx}, storage(), Schema)),
     % put new element
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -147,14 +147,14 @@ set_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:set(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), Schema)),
+    }}, ejsondb:set(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), Schema)),
     ok.
 
 add_test() -> 
     Schema = ejsondb:new(<<"id">>, qtab()),
-    ?assertEqual({error, badkey}, ejsondb:add(d, [], #{}, storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:add(d, [0], #{}, storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:add(d, [0,1], #{}, storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:add(d, [], #{}, storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:add(d, [0], #{}, storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:add(d, [0,1], #{}, storage(), Schema)),
 
     % level.1
     ?assertEqual({error, badarity}, ejsondb:add(a, [], #{}, storage(), Schema)),
@@ -164,7 +164,7 @@ add_test() ->
     ?assertEqual({error, already_exist}, ejsondb:add(a, [1], #{<<"new_value">> => abc}, storage(), Schema)),
 
     % put new element
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -176,7 +176,7 @@ add_test() ->
             ]},
             #{ <<"id">> => 10, <<"new_value">> => abc}
         ]
-    }, ejsondb:add(a, [10], #{<<"new_value">> => abc}, storage(), Schema)),
+    }}, ejsondb:add(a, [10], #{<<"new_value">> => abc}, storage(), Schema)),
     
     % level.2
     ?assertEqual({error, badarity}, ejsondb:add(b, [], #{}, storage(), Schema)),
@@ -189,7 +189,7 @@ add_test() ->
     ?assertEqual({error, already_exist}, ejsondb:add(b, [1, 0], #{<<"new_value">> => abc}, storage(), Schema)),
 
     % put new element
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -201,7 +201,7 @@ add_test() ->
                 #{<<"id">> => 10, <<"new_value">> => abc}
             ]}
         ]
-    }, ejsondb:add(b, [1, 10], #{<<"new_value">> => abc}, storage(), Schema)),
+    }}, ejsondb:add(b, [1, 10], #{<<"new_value">> => abc}, storage(), Schema)),
 
     % level.3
     ?assertEqual({error, badarity}, ejsondb:add(c, [], #{}, storage(), Schema)),
@@ -211,7 +211,7 @@ add_test() ->
     % override
     ?assertEqual({error, already_exist}, ejsondb:add(c, [1, 1, 0], #{<<"new_value">> => xxx}, storage(), Schema)),
     % put new element
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -223,21 +223,21 @@ add_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:add(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), Schema)),
+    }}, ejsondb:add(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), Schema)),
     ok.
 
 add_at_test() -> 
     Schema = ejsondb:new(<<"id">>, qtab()),
-    ?assertEqual({error, badkey}, ejsondb:add_at(d, [], #{}, storage(), '$head', Schema)),
-    ?assertEqual({error, badkey}, ejsondb:add_at(d, [0], #{}, storage(), '$head', Schema)),
-    ?assertEqual({error, badkey}, ejsondb:add_at(d, [0,1], #{}, storage(), '$head', Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:add_at(d, [], #{}, storage(), '$head', Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:add_at(d, [0], #{}, storage(), '$head', Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:add_at(d, [0,1], #{}, storage(), '$head', Schema)),
     ?assertEqual({error, badarg}, ejsondb:add_at(a, [10], #{}, storage(), '$current', Schema)),
     
     % override
     ?assertEqual({error, already_exist}, ejsondb:add_at(c, [1, 1, 0], #{<<"new_value">> => xxx}, storage(), '$head', Schema)),
 
     % put new element (head)
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -249,9 +249,9 @@ add_at_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:add_at(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), '$head', Schema)),
+    }}, ejsondb:add_at(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), '$head', Schema)),
     % put new element (head)
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -263,9 +263,9 @@ add_at_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:add_at(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), '$tail', Schema)),
+    }}, ejsondb:add_at(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), '$tail', Schema)),
 
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -277,27 +277,27 @@ add_at_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:add_at(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), 1, Schema)),
+    }}, ejsondb:add_at(c, [1, 1, 10], #{<<"new_value">> => xxx}, storage(), 1, Schema)),
     ok.
 
 delete_test() -> 
     Schema = ejsondb:new(<<"id">>, qtab()),
-    ?assertEqual({error, badkey}, ejsondb:delete(d, [], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:delete(d, [0], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:delete(d, [0,1], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:delete(d, [], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:delete(d, [0], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:delete(d, [0,1], storage(), Schema)),
     ?assertEqual({error, badarity}, ejsondb:delete(a, [0, 10], storage(), Schema)),
     
     % doesn't exist ok
-    ?assertEqual(storage(), ejsondb:delete(a, [10], storage(), Schema)),
+    ?assertEqual({ok, storage()}, ejsondb:delete(a, [10], storage(), Schema)),
     % path doesn't exist ok
-    ?assertEqual(storage(), ejsondb:delete(c, [1, 10, 0], storage(), Schema)),
+    ?assertEqual({ok, storage()}, ejsondb:delete(c, [1, 10, 0], storage(), Schema)),
     
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx}
         ]
-    }, ejsondb:delete(a, [1], storage(), Schema)),
-    ?assertEqual(#{
+    }}, ejsondb:delete(a, [1], storage(), Schema)),
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -307,32 +307,32 @@ delete_test() ->
                 ]}
             ]}
         ]
-    }, ejsondb:delete(c, [1, 1, 0], storage(), Schema)),
+    }}, ejsondb:delete(c, [1, 1, 0], storage(), Schema)),
     ok.
 
 get_all_test()  ->
     Schema = ejsondb:new(<<"id">>, qtab()),
-    ?assertEqual({error, badkey}, ejsondb:get_all(d, [], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:get_all(d, [0], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:get_all(d, [0,1], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:get_all(d, [], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:get_all(d, [0], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:get_all(d, [0,1], storage(), Schema)),
     
     % level.1
     ?assertEqual({error, badarity}, ejsondb:get_all(a, [0], storage(), Schema)),
     ?assertEqual({error, not_found}, ejsondb:get_all(a, [], #{}, Schema)),
 
-    ?assertEqual(maps:get(<<"a">>, storage()), ejsondb:get_all(a, [], storage(), Schema)),
+    ?assertEqual({ok, maps:get(<<"a">>, storage())}, ejsondb:get_all(a, [], storage(), Schema)),
     
     % level.2
     ?assertEqual({error, badarity}, ejsondb:get_all(b, [], storage(), Schema)),
     ?assertEqual({error, badarity}, ejsondb:get_all(b, [0, 1], storage(), Schema)),
     ?assertEqual({error, not_found}, ejsondb:get_all(b, [0], storage(), Schema)),
 
-    ?assertEqual([
+    ?assertEqual({ok, [
                 #{<<"id">> => 0, <<"value">> => yyy},
                 #{ <<"id">> => 1, <<"c">> => [
                     #{<<"id">> => 0, <<"value">> => zzz},
                     #{<<"id">> => 1, <<"value">> => xyz}
-                ]}], ejsondb:get_all(b, [1], storage(), Schema)),
+                ]}]}, ejsondb:get_all(b, [1], storage(), Schema)),
 
     % level.3
     ?assertEqual({error, badarity}, ejsondb:get_all(c, [], storage(), Schema)),
@@ -341,36 +341,36 @@ get_all_test()  ->
     
     ?assertEqual({error, not_found}, ejsondb:get_all(c, [1, 0], storage(), Schema)),
     
-    ?assertEqual([
+    ?assertEqual({ok, [
                     #{<<"id">> => 0, <<"value">> => zzz},
                     #{<<"id">> => 1, <<"value">> => xyz}
-                ], ejsondb:get_all(c, [1, 1], storage(), Schema)),
+                ]}, ejsondb:get_all(c, [1, 1], storage(), Schema)),
     ok.
 
 set_all_test() ->
     Schema = ejsondb:new(<<"id">>, qtab()),
-    ?assertEqual({error, badkey}, ejsondb:set_all(d, [], [], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:set_all(d, [0], [], storage(), Schema)),
-    ?assertEqual({error, badkey}, ejsondb:set_all(d, [0,1], [], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:set_all(d, [], [], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:set_all(d, [0], [], storage(), Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:set_all(d, [0,1], [], storage(), Schema)),
     
     % level.1
     ?assertEqual({error, badarity}, ejsondb:set_all(a, [0], [], storage(), Schema)),
     ?assertEqual({error, not_found}, ejsondb:set_all(a, [], [], #{}, Schema)),
 
-    ?assertEqual(#{<<"a">> => []}, ejsondb:set_all(a, [], [], storage(), Schema)),
-    ?assertEqual(#{<<"a">> => [1,2,3]}, ejsondb:set_all(a, [], [1,2,3], storage(), Schema)),
+    ?assertEqual({ok, #{<<"a">> => []}}, ejsondb:set_all(a, [], [], storage(), Schema)),
+    ?assertEqual({ok, #{<<"a">> => [1,2,3]}}, ejsondb:set_all(a, [], [1,2,3], storage(), Schema)),
     
     % level.2
     ?assertEqual({error, badarity}, ejsondb:set_all(b, [], [], storage(), Schema)),
     ?assertEqual({error, badarity}, ejsondb:set_all(b, [0, 1], [], storage(), Schema)),
     ?assertEqual({error, not_found}, ejsondb:set_all(b, [0], [], storage(), Schema)),
 
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => []}
         ]
-    }, ejsondb:set_all(b, [1], [], storage(), Schema)),
+    }}, ejsondb:set_all(b, [1], [], storage(), Schema)),
 
     % level.3
     ?assertEqual({error, badarity}, ejsondb:set_all(c, [], [], storage(), Schema)),
@@ -379,7 +379,7 @@ set_all_test() ->
     
     ?assertEqual({error, not_found}, ejsondb:set_all(c, [1, 0], [], storage(), Schema)),
     
-    ?assertEqual(#{
+    ?assertEqual({ok, #{
         <<"a">> => [
             #{ <<"id">> => 0, <<"value">> => xxx},
             #{ <<"id">> => 1, <<"b">> => [
@@ -387,13 +387,13 @@ set_all_test() ->
                 #{ <<"id">> => 1, <<"c">> => []}
             ]}
         ]
-    }, ejsondb:set_all(c, [1, 1], [], storage(), Schema)),
+    }}, ejsondb:set_all(c, [1, 1], [], storage(), Schema)),
     ok.
 
 qfind_i_test() ->
     Schema = ejsondb:new(<<"id">>, qtab()),
     ?assertEqual({"$.a", 0}, ejsondb:qfind_i(a, Schema)),
-    ?assertEqual({error, badkey}, ejsondb:qfind_i(d, Schema)),
+    ?assertEqual({error, query_not_found}, ejsondb:qfind_i(d, Schema)),
     ok.
 
 modify_i_test() ->
@@ -428,19 +428,19 @@ keyacces_atom_test() ->
 
     %% GET
     ?assertEqual(
-        #{id => 0, value => xxx},
+        {ok, #{id => 0, value => xxx}},
         ejsondb:get(a, [0], Json, Schema)
     ),
     ?assertEqual(
-        #{id => 1,value => yyy},
+        {ok, #{id => 1,value => yyy}},
         ejsondb:get(a, [1], Json, Schema)
     ),
     ?assertEqual(
-        #{count => 10, id => 0},
+        {ok, #{count => 10, id => 0}},
         ejsondb:get(b, [2,0], Json, Schema)
     ),
     ?assertEqual(
-        #{count => 12, id => 1},
+        {ok, #{count => 12, id => 1}},
         ejsondb:get(b, [2,1], Json, Schema)
     ),
     ?assertEqual(
@@ -454,32 +454,32 @@ keyacces_atom_test() ->
         ejsondb:add(b, [2,1], #{}, Json, Schema)
     ),
 
-    Json1 = ejsondb:add(b, [2,2], #{n => 100}, Json, Schema),
+    {ok, Json1} = ejsondb:add(b, [2,2], #{n => 100}, Json, Schema),
     ?assertEqual(
-        #{id => 2, n => 100},
+        {ok, #{id => 2, n => 100}},
         ejsondb:get(b, [2,2], Json1, Schema)
     ),
 
     %% SET
-    Json2 = ejsondb:set(b, [2,10], #{n => 1000}, Json1, Schema),
+    {ok, Json2} = ejsondb:set(b, [2,10], #{n => 1000}, Json1, Schema),
     ?assertEqual(
-        #{id => 10, n => 1000},
+        {ok, #{id => 10, n => 1000}},
         ejsondb:get(b, [2,10], Json2, Schema)
     ),
 
     %% DELETE
-    Json3 = ejsondb:delete(b, [2, 10], Json2, Schema),
+    {ok, Json3} = ejsondb:delete(b, [2, 10], Json2, Schema),
     ?assertEqual(
         {error, not_found},
         ejsondb:get(b, [2, 10], Json3, Schema)
     ),
     %% SET_ALL/GET_ALL
-    Json4 = ejsondb:set_all(b, [2], [], Json3, Schema),
-    ?assertEqual([], ejsondb:get_all(b, [2], Json4, Schema)),
+    {ok, Json4} = ejsondb:set_all(b, [2], [], Json3, Schema),
+    ?assertEqual({ok, []}, ejsondb:get_all(b, [2], Json4, Schema)),
 
-    Json5 = ejsondb:set_all(a, [], [], Json3, Schema),
+    {ok, Json5} = ejsondb:set_all(a, [], [], Json3, Schema),
     ?assertEqual(#{a => []}, Json5),
-    ?assertEqual([], ejsondb:get_all(a, [], Json5, Schema)),
+    ?assertEqual({ok, []}, ejsondb:get_all(a, [], Json5, Schema)),
 
     ok.
 
