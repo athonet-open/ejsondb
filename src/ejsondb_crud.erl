@@ -177,15 +177,15 @@ upsert(Query, Key, Id, Value, Json, At, Funs, Opts) ->
 %% @doc delete element by key with id.
 %% if not found return success gracefully.
 
--spec delete(Query, Key, Id, Json, Funs, Opts)
-      -> query_result() | {error, term()}
+-spec delete(Query, Key, Id, Json, Funs, Opts) -> Result
   when
   Query :: query(),
   Key :: ejsondb_id_key(),
   Id :: id_value(),
   Json :: json_node(),
   Funs :: modifier_funs(),
-  Opts :: opts().
+  Opts :: opts(),
+  Result :: json_node() | {error, term()}.
 
 delete(Query, Key, Id, Json, Funs, Opts) ->
   delete(query_append_i(Query, Key, Id), Json, Funs, Opts).
@@ -195,7 +195,7 @@ delete(Query, Key, Id, Json, Funs, Opts) ->
 %% if not found return success gracefully.
 
 -spec delete(Query :: query(), Json :: json_node(), Funs :: modifier_funs(), Opts :: opts())
-      -> query_result() | {error, term()}.
+      -> json_node() | {error, term()}.
 
 delete(Query, Json, Funs, Opts) ->
   try
